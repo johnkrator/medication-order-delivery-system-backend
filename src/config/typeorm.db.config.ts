@@ -1,46 +1,40 @@
 import { config as dotenvConfig } from 'dotenv';
-import * as process from 'node:process';
-import { registerAs } from '@nestjs/config';
 import { DataSource, DataSourceOptions } from 'typeorm';
 import { User } from '../user/entities/user.entity';
+import { Order } from '../order/entities/order.entity';
+import { Medication } from '../medication/entities/medication.entity';
+import { DeliveryPartner } from '../delivery-partner/entities/delivery-partner.entity';
+import { Payment } from '../payment/entities/payment.entity';
 
-dotenvConfig({ path: '.env' });
+dotenvConfig();
 
-const config = {
+const config: DataSourceOptions = {
   type: 'postgres',
   host: process.env.DATABASE_HOST,
   port: parseInt(process.env.DATABASE_PORT, 10),
   username: process.env.DATABASE_USERNAME,
   password: process.env.DATABASE_PASSWORD,
   database: process.env.DATABASE_NAME,
-  entities: [User],
-  migrations: ['dist/migrations/*.{ts,js}'],
-  autoLoadEntities: true,
+  entities: [User, Order, Medication, DeliveryPartner, Payment],
   synchronize: false,
-  logging: false,
-  migrationsRun: true,
-  subscribers: ['dist/subscriber//*.{ts,js}'],
-  migrationsTableName: 'migrations',
-  cli: {
-    entitiesDir: 'src',
-    migrationsDir: 'src/migrations',
-    subscribersDir: 'src/subscriber',
-  },
-  ssl: false,
-  maxQueryExecutionTime: 1000,
-  queryRunnerTimeout: 10000,
-  retryInterval: 1000,
-  retryMaxTimeout: 10000,
-  retryTimeout: 10000,
-  retryMaxDelay: 10000,
-  retryDelayType: 'exponential',
-  retryAttempts: 5,
-  retryDelay: 3000,
-  cache: {
-    tableName: 'query-result-cache',
-    duration: 60000,
+  logging: true,
+  ssl: process.env.NODE_ENV === 'production',
+  extra: {
+    max: 10,
+    connectionTimeoutMillis: 10000,
   },
 };
 
-export default registerAs('typeormDbConfig', () => config);
-export const connectionSource = new DataSource(config as DataSourceOptions);
+export const connectionSource = new DataSource(config);
+
+// Initialize the connection
+connectionSource
+  .initialize()
+  .then(() => {
+    console.log('Data Source has been initialized!');
+  })
+  .catch((err) => {
+    console.error('Error during Data Source initialization', err);
+  });
+
+export default () => config;
