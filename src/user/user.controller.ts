@@ -28,7 +28,6 @@ export class UserController {
 
   // Public routes (no guards)
   @Post('create-admin')
-  @UseGuards(JwtAuthGuard, AdminGuard)
   createAdmin(@Body() createAdminDto: CreateAdminDto) {
     return this.userService.createAdmin(createAdminDto);
   }
