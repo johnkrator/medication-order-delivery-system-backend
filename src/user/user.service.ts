@@ -24,6 +24,7 @@ import * as crypto from 'crypto';
 import { UserResponseDto } from './dto/response/user-response.dto';
 import { Cache } from 'cache-manager';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import { UserRole } from '../enums/user-role';
 
 @Injectable()
 export class UserService {
@@ -55,8 +56,10 @@ export class UserService {
       ...createAdminDto,
       password: hashedPassword,
       isAdmin: true,
-      roles: ['admin', 'user'],
+      roles: [UserRole.ADMIN, UserRole.USER],
       isVerified: true, // Admin accounts are pre-verified
+      createdAt: new Date(),
+      updatedAt: new Date(),
     });
 
     const savedUser = await this.userRepository.save(user);
@@ -94,7 +97,9 @@ export class UserService {
       verificationCode,
       verificationCodeExpires,
       isAdmin: false, // Force regular users to be non-admin
-      roles: ['user'], // Force regular users to have 'user' role
+      roles: [UserRole.USER], // Force regular users to have 'user' role
+      createdAt: new Date(),
+      updatedAt: new Date(),
     });
 
     const savedUser = await this.userRepository.save(user);

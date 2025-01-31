@@ -4,7 +4,10 @@ import {
   Column,
   CreateDateColumn,
   UpdateDateColumn,
+  OneToMany,
 } from 'typeorm';
+import { Order } from '../../order/entities/order.entity';
+import { UserRole } from '../../enums/user-role';
 
 @Entity('users')
 export class User {
@@ -23,11 +26,14 @@ export class User {
   @Column({ default: false })
   isAdmin: boolean;
 
+  @OneToMany(() => Order, (order) => order.user)
+  orders: Order[];
+
   @Column({ default: false })
   isDeleted: boolean;
 
-  @Column('text', { array: true, default: ['user'] })
-  roles: string[];
+  @Column({ type: 'enum', enum: UserRole, array: true, default: UserRole.USER })
+  roles: UserRole[];
 
   @Column({ default: false })
   isVerified: boolean;
