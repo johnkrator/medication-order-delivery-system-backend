@@ -13,6 +13,8 @@ import { MedicationModule } from './medication/medication.module';
 import { DeliveryPartnerModule } from './delivery-partner/delivery-partner.module';
 import typeormDbConfig from './config/typeorm.db.config';
 import { ThrottlerModule } from '@nestjs/throttler';
+import { PaginationService } from './services/pagination/pagination.service';
+import { PaginationModule } from './services/pagination/pagination.module';
 
 @Module({
   imports: [
@@ -47,8 +49,9 @@ import { ThrottlerModule } from '@nestjs/throttler';
     PaymentModule,
     MedicationModule,
     DeliveryPartnerModule,
+    PaginationModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [AppService, PaginationService],
 })
 export class AppModule {}
