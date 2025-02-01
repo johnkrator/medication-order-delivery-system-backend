@@ -1,26 +1,51 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { DeliveryPartner } from './entities/delivery-partner.entity';
 import { CreateDeliveryPartnerDto } from './dto/create-delivery-partner.dto';
 import { UpdateDeliveryPartnerDto } from './dto/update-delivery-partner.dto';
 
 @Injectable()
 export class DeliveryPartnerService {
-  create(createDeliveryPartnerDto: CreateDeliveryPartnerDto) {
-    return 'This action adds a new deliveryPartner';
+  constructor(
+    @InjectRepository(DeliveryPartner)
+    private readonly deliveryPartnerRepository: Repository<DeliveryPartner>,
+  ) {}
+
+  async create(
+    createDeliveryPartnerDto: CreateDeliveryPartnerDto,
+  ): Promise<DeliveryPartner> {
+    const deliveryPartner = this.deliveryPartnerRepository.create(
+      createDeliveryPartnerDto,
+    );
+    return this.deliveryPartnerRepository.save(deliveryPartner);
   }
 
-  findAll() {
-    return `This action returns all deliveryPartner`;
+  async findAll(): Promise<DeliveryPartner[]> {
+    return this.deliveryPartnerRepository.find();
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} deliveryPartner`;
+  async findOne(id: string): Promise<DeliveryPartner> {
+    const deliveryPartner = await this.deliveryPartnerRepository.findOne({
+      where: { id },
+    });
+    if (!deliveryPartner) {
+      throw new NotFoundException('Delivery partner not found');
+    }
+    return deliveryPartner;
   }
 
-  update(id: number, updateDeliveryPartnerDto: UpdateDeliveryPartnerDto) {
-    return `This action updates a #${id} deliveryPartner`;
+  async update(
+    id: string,
+    updateDeliveryPartnerDto: UpdateDeliveryPartnerDto,
+  ): Promise<DeliveryPartner> {
+    const deliveryPartner = await this.findOne(id);
+    Object.assign(deliveryPartner, updateDeliveryPartnerDto);
+    return this.deliveryPartnerRepository.save(deliveryPartner);
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} deliveryPartner`;
+  async remove(id: string): Promise<void> {
+    const deliveryPartner = await this.findOne(id);
+    await this.deliveryPartnerRepository.remove(deliveryPartner);
   }
 }
