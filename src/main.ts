@@ -1,9 +1,10 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
-import { Logger, ValidationPipe } from '@nestjs/common';
-import { GlobalExceptionFilter } from './common/global.exception.filter';
+import { ValidationPipe } from '@nestjs/common';
+import { GlobalExceptionFilter } from './common/logger/global.exception.filter';
 import { checkAndUpdateDatabaseSchema } from './config/check-and-update-database-schema';
 import { connectionSource } from './config/typeorm.db.config';
+import { WinstonLogger } from './common/logger/winston.logger';
 
 async function bootstrap() {
   try {
@@ -11,7 +12,9 @@ async function bootstrap() {
       await connectionSource.initialize();
     }
 
-    const app = await NestFactory.create(AppModule);
+    const app = await NestFactory.create(AppModule, {
+      logger: new WinstonLogger(),
+    });
 
     app.enableCors();
     app.setGlobalPrefix('api');
@@ -22,12 +25,11 @@ async function bootstrap() {
     await checkAndUpdateDatabaseSchema(connectionSource);
 
     await app.listen(process.env.PORT ?? 3000);
-    Logger.log(
+    new WinstonLogger().log(
       `Server running on http://localhost:${process.env.PORT ?? 3000}`,
-      'Bootstrap',
     );
   } catch (error) {
-    Logger.error(`Failed to start the server`, error.stack, 'Bootstrap');
+    new WinstonLogger().error(`Failed to start the server`, error.stack);
 
     // Exit if we can't start properly
     process.exit(1);
@@ -36,11 +38,11 @@ async function bootstrap() {
 
 // Handle uncaught errors
 process.on('unhandledRejection', (error: Error) => {
-  Logger.error('Unhandled Promise Rejection', error.stack);
+  new WinstonLogger().error('Unhandled Promise Rejection', error.stack);
 });
 
 process.on('uncaughtException', (error: Error) => {
-  Logger.error('Uncaught Exception', error.stack);
+  new WinstonLogger().error('Uncaught Exception', error.stack);
 });
 
 bootstrap().then(() => console.log('Application is running!'));
