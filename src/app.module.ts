@@ -12,6 +12,7 @@ import { PaymentModule } from './payment/payment.module';
 import { MedicationModule } from './medication/medication.module';
 import { DeliveryPartnerModule } from './delivery-partner/delivery-partner.module';
 import typeormDbConfig from './config/typeorm.db.config';
+import { ThrottlerModule } from '@nestjs/throttler';
 
 @Module({
   imports: [
@@ -20,7 +21,17 @@ import typeormDbConfig from './config/typeorm.db.config';
       load: [typeormDbConfig],
     }),
     TypeOrmModule.forRootAsync({
-      imports: [ConfigModule],
+      imports: [
+        ThrottlerModule.forRoot({
+          throttlers: [
+            {
+              ttl: 60,
+              limit: 10,
+            },
+          ],
+        }),
+        ConfigModule,
+      ],
       inject: [ConfigService],
       useFactory: async () => ({
         ...typeormDbConfig(),

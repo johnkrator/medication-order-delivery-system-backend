@@ -4,10 +4,10 @@ import {
   ArgumentsHost,
   HttpException,
   HttpStatus,
-  Logger,
 } from '@nestjs/common';
 import { Response } from 'express';
 import { QueryFailedError } from 'typeorm';
+import { WinstonLogger } from './winston.logger'; // Import WinstonLogger
 
 // Base error response interface
 export interface ErrorResponse {
@@ -106,7 +106,7 @@ export const getPasswordValidationDetails = (
 
 @Catch()
 export class GlobalExceptionFilter implements ExceptionFilter {
-  private readonly logger = new Logger(GlobalExceptionFilter.name);
+  private readonly logger = new WinstonLogger(); // Use WinstonLogger
 
   catch(exception: unknown, host: ArgumentsHost) {
     try {
@@ -215,11 +215,11 @@ export class GlobalExceptionFilter implements ExceptionFilter {
 
       // Log based on severity
       if (statusCode >= 500) {
-        this.logger.error(errorLog);
+        this.logger.error({ ...errorLog });
       } else if (statusCode >= 400) {
-        this.logger.warn(errorLog);
+        this.logger.warn({ ...errorLog });
       } else {
-        this.logger.log(errorLog);
+        this.logger.log({ ...errorLog });
       }
 
       // Construct the error response
