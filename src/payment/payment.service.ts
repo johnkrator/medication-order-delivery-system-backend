@@ -1,94 +1,119 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import axios from 'axios';
 import { Payment } from './entities/payment.entity';
 import { Order } from '../order/entities/order.entity';
 import { PaymentStatus } from '../enums/payment-status';
 
-const PayStack = require('paystack-node');
-
 @Injectable()
 export class PaymentService {
-  private readonly paystack: any;
-
   constructor(
     @InjectRepository(Payment)
     private readonly paymentRepository: Repository<Payment>,
     @InjectRepository(Order)
     private readonly orderRepository: Repository<Order>,
-  ) {
-    // Initialize Paystack with your secret key
-    this.paystack = new PayStack(process.env.PAYSTACK_SECRET_KEY, 'test'); // Use 'live' instead of 'test' for production
-  }
+  ) {}
 
   async initiatePayment(data: {
     orderId: string;
     amount: number;
     email: string;
-  }): Promise<{ paymentReference: string; redirectUrl: string }> {
+  }): Promise<{
+    paymentReference: string;
+    redirectUrl: string;
+  }> {
     const { orderId, amount, email } = data;
+
+    if (!orderId || !amount || !email) {
+      throw new BadRequestException('Missing required payment parameters');
+    }
+
+    if (amount <= 0) {
+      throw new BadRequestException('Invalid payment amount');
+    }
 
     const order = await this.orderRepository.findOne({
       where: { id: orderId },
     });
     if (!order) {
-      throw new NotFoundException('Order not found');
+      throw new NotFoundException(`Order with ID ${orderId} not found`);
     }
 
+    const paymentReference = `ORDER-${orderId}-${Date.now()}`;
+    const callbackUrl =
+      process.env.PAYMENT_CALLBACK_URL ||
+      'http://localhost:3000/api/payment/callback';
+
+    const paymentPayload = {
+      reference: paymentReference,
+      amount: amount * 100, // Paystack expects amount in kobo
+      email,
+      currency: 'NGN',
+      callback_url: callbackUrl,
+      metadata: { orderId },
+    };
+
     try {
-      const paymentPayload = {
-        reference: `ORDER-${orderId}-${Date.now()}`,
-        amount: amount * 100, // Paystack expects amount in kobo
-        email,
-        currency: 'NGN',
-        callback_url:
-          process.env.PAYMENT_CALLBACK_URL ||
-          'https://http://localhost:3000/api/payment/callback',
-        metadata: {
-          orderId,
-          custom_fields: [
-            {
-              display_name: 'Order ID',
-              variable_name: 'order_id',
-              value: orderId,
-            },
-          ],
+      const response = await axios.post(
+        'https://api.paystack.co/transaction/initialize',
+        paymentPayload,
+        {
+          headers: {
+            Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`,
+            'Content-Type': 'application/json',
+          },
         },
-      };
+      );
 
-      const response =
-        await this.paystack.initializeTransaction(paymentPayload);
-
-      if (!response.status) {
-        throw new Error('Payment initialization failed');
+      if (!response.data.status) {
+        throw new Error(
+          response.data.message || 'Failed to initialize payment',
+        );
       }
 
-      // Save payment record
       const payment = this.paymentRepository.create({
         order,
         amount,
         status: PaymentStatus.PENDING,
-        transactionReference: paymentPayload.reference,
+        transactionReference: paymentReference,
+        authorizationUrl: response.data.data.authorization_url,
       });
       await this.paymentRepository.save(payment);
 
       return {
-        paymentReference: paymentPayload.reference,
-        redirectUrl: response.data.authorization_url,
+        paymentReference,
+        redirectUrl: response.data.data.authorization_url,
       };
     } catch (error) {
-      console.error('Paystack payment initialization error:', error);
+      console.error('Payment initialization failed:', error);
       throw new Error(`Payment initialization failed: ${error.message}`);
     }
   }
 
   async verifyPayment(transactionReference: string): Promise<Payment> {
-    try {
-      const response =
-        await this.paystack.verifyTransaction(transactionReference);
+    if (!transactionReference) {
+      throw new BadRequestException('Transaction reference is required');
+    }
 
-      if (!response.status || response.data.status !== 'success') {
-        throw new Error('Payment verification failed');
+    try {
+      const response = await axios.get(
+        `https://api.paystack.co/transaction/verify/${transactionReference}`,
+        {
+          headers: {
+            Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`,
+          },
+        },
+      );
+
+      if (!response.data.status || response.data.data.status !== 'success') {
+        throw new Error(
+          `Payment unsuccessful: ${response.data.data.gateway_response}`,
+        );
       }
 
       const payment = await this.paymentRepository.findOne({
@@ -97,21 +122,22 @@ export class PaymentService {
       });
 
       if (!payment) {
-        throw new NotFoundException('Payment record not found');
+        throw new NotFoundException(
+          `Payment record not found for reference: ${transactionReference}`,
+        );
       }
 
-      // Update payment status
       payment.status = PaymentStatus.SUCCESSFUL;
       await this.paymentRepository.save(payment);
 
-      // Update order status
-      const order = payment.order;
-      order.paymentStatus = PaymentStatus.SUCCESSFUL;
-      await this.orderRepository.save(order);
+      if (payment.order) {
+        payment.order.paymentStatus = PaymentStatus.SUCCESSFUL;
+        await this.orderRepository.save(payment.order);
+      }
 
       return payment;
     } catch (error) {
-      console.error('Paystack payment verification error:', error);
+      console.error('Payment verification failed:', error);
       throw new Error(`Payment verification failed: ${error.message}`);
     }
   }

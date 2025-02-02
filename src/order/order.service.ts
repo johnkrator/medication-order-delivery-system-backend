@@ -41,17 +41,20 @@ export class OrderService {
       throw new NotFoundException('One or more medications not found');
     }
 
-    // Calculate total amount
+    // Calculate total amount - ensure proper decimal handling
     const totalAmount = medications.reduce(
-      (sum, medication) => sum + medication.price,
+      (sum, medication) => sum + Number(medication.price),
       0,
     );
+
+    // Format to 2 decimal places
+    const formattedTotalAmount = Number(totalAmount.toFixed(2));
 
     // Create order
     const order = this.orderRepository.create({
       user,
       medications,
-      totalAmount,
+      totalAmount: formattedTotalAmount,
       deliveryAddress,
       specialInstructions,
       status: OrderStatus.PENDING,
@@ -63,7 +66,7 @@ export class OrderService {
     // Initiate payment
     const payment = await this.paymentService.initiatePayment({
       orderId: savedOrder.id,
-      amount: totalAmount,
+      amount: formattedTotalAmount, // Use the same formatted amount
       email: user.email,
     });
 

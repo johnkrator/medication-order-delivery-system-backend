@@ -10,25 +10,25 @@ import {
 export class CreateDeliveryPartnerDto {
   @IsString()
   @IsNotEmpty()
-  firstName: string; // First name of the delivery partner
+  firstName: string;
 
   @IsString()
   @IsNotEmpty()
-  lastName: string; // Last name of the delivery partner
+  lastName: string;
 
   @IsEmail()
   @IsNotEmpty()
-  email: string; // Email of the delivery partner
+  email: string;
 
-  @IsPhoneNumber()
+  @IsPhoneNumber('NG')
   @IsNotEmpty()
-  phone: string; // Phone number of the delivery partner
+  phone: string;
 
   @IsString()
   @IsOptional()
-  vehicleType?: string; // Type of vehicle (optional)
+  vehicleType?: string;
 
   @IsBoolean()
   @IsOptional()
-  isAvailable?: boolean; // Availability status (optional, default: true)
+  isAvailable?: boolean;
 }

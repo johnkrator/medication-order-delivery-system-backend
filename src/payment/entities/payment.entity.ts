@@ -33,6 +33,12 @@ export class Payment {
   @Column({ nullable: true })
   paymentMethod: string;
 
+  @Column({ nullable: true })
+  authorizationUrl: string;
+
+  @Column({ type: 'jsonb', nullable: true })
+  verificationResponse: any;
+
   @CreateDateColumn()
   createdAt: Date;
 

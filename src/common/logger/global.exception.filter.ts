@@ -52,19 +52,6 @@ const PASSWORD_PATTERNS = {
   hasSpecialChar: /[!@#$%^&*(),.?":{}|<>]/,
 };
 
-// Custom exception for password validation
-export class PasswordValidationException extends HttpException {
-  constructor(validationResult: ValidationErrorDetails) {
-    const response = {
-      message: 'Password validation failed',
-      error: 'Validation Error',
-      details: validationResult,
-    };
-    super(response, HttpStatus.BAD_REQUEST);
-  }
-}
-
-// Validation helper functions
 export const validatePasswordRequirements = (
   password: string,
 ): PasswordRequirements => {

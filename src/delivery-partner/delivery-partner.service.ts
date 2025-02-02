@@ -15,9 +15,11 @@ export class DeliveryPartnerService {
   async create(
     createDeliveryPartnerDto: CreateDeliveryPartnerDto,
   ): Promise<DeliveryPartner> {
-    const deliveryPartner = this.deliveryPartnerRepository.create(
-      createDeliveryPartnerDto,
-    );
+    const deliveryPartner = this.deliveryPartnerRepository.create({
+      ...createDeliveryPartnerDto,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
     return this.deliveryPartnerRepository.save(deliveryPartner);
   }
 
