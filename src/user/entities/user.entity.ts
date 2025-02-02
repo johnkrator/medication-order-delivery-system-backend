@@ -32,7 +32,12 @@ export class User {
   @Column({ default: false })
   isDeleted: boolean;
 
-  @Column({ type: 'enum', enum: UserRole, array: true, default: UserRole.USER })
+  @Column({
+    type: 'enum',
+    enum: UserRole,
+    array: true,
+    default: [UserRole.USER],
+  })
   roles: UserRole[];
 
   @Column({ default: false })

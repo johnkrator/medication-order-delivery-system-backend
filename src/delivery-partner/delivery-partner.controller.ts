@@ -1,11 +1,21 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+} from '@nestjs/common';
 import { DeliveryPartnerService } from './delivery-partner.service';
 import { CreateDeliveryPartnerDto } from './dto/create-delivery-partner.dto';
 import { UpdateDeliveryPartnerDto } from './dto/update-delivery-partner.dto';
 
 @Controller('delivery-partner')
 export class DeliveryPartnerController {
-  constructor(private readonly deliveryPartnerService: DeliveryPartnerService) {}
+  constructor(
+    private readonly deliveryPartnerService: DeliveryPartnerService,
+  ) {}
 
   @Post()
   create(@Body() createDeliveryPartnerDto: CreateDeliveryPartnerDto) {
@@ -19,16 +29,19 @@ export class DeliveryPartnerController {
 
   @Get(':id')
   findOne(@Param('id') id: string) {
-    return this.deliveryPartnerService.findOne(+id);
+    return this.deliveryPartnerService.findOne(id);
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateDeliveryPartnerDto: UpdateDeliveryPartnerDto) {
-    return this.deliveryPartnerService.update(+id, updateDeliveryPartnerDto);
+  update(
+    @Param('id') id: string,
+    @Body() updateDeliveryPartnerDto: UpdateDeliveryPartnerDto,
+  ) {
+    return this.deliveryPartnerService.update(id, updateDeliveryPartnerDto);
   }
 
   @Delete(':id')
   remove(@Param('id') id: string) {
-    return this.deliveryPartnerService.remove(+id);
+    return this.deliveryPartnerService.remove(id);
   }
 }

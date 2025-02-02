@@ -54,6 +54,9 @@ export class Order {
   @Column({ nullable: true })
   specialInstructions: string;
 
+  @Column({ nullable: true })
+  paymentReference: string;
+
   @CreateDateColumn()
   createdAt: Date;
 
