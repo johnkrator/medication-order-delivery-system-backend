@@ -17,5 +17,5 @@ export class CreatePaymentDto {
 export class VerifyPaymentDto {
   @IsString()
   @IsNotEmpty()
-  transactionId: string; // Transaction ID from Flutterwave
+  transactionId: string;
 }

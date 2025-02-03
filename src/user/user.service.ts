@@ -57,7 +57,7 @@ export class UserService {
       password: hashedPassword,
       isAdmin: true,
       roles: [UserRole.ADMIN, UserRole.USER],
-      isVerified: true, // Admin accounts are pre-verified
+      isVerified: true,
       createdAt: new Date(),
       updatedAt: new Date(),
     });
@@ -96,8 +96,8 @@ export class UserService {
       password: hashedPassword,
       verificationCode,
       verificationCodeExpires,
-      isAdmin: false, // Force regular users to be non-admin
-      roles: [UserRole.USER], // Force regular users to have 'user' role
+      isAdmin: false,
+      roles: [UserRole.USER],
       createdAt: new Date(),
       updatedAt: new Date(),
     });
