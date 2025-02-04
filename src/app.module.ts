@@ -5,7 +5,6 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { UserModule } from './user/user.module';
 import { EmailModule } from './email/email.module';
-import { SmsModule } from './sms/sms.module';
 import { RedisCacheModule } from './common/redis.config';
 import { OrderModule } from './order/order.module';
 import { PaymentModule } from './payment/payment.module';
@@ -43,7 +42,6 @@ import { PaginationModule } from './services/pagination/pagination.module';
     }),
     UserModule,
     EmailModule,
-    SmsModule,
     RedisCacheModule,
     OrderModule,
     PaymentModule,

@@ -6,7 +6,6 @@ import { User } from './entities/user.entity';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { EmailModule } from '../email/email.module';
-import { SmsModule } from '../sms/sms.module';
 import { PassportModule } from '@nestjs/passport';
 import { JwtStrategy } from '../common/strategies/jwt.strategy';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
@@ -26,7 +25,6 @@ import { UserOrAdminGuard } from '../common/guards/user-or-admin.guard';
       }),
     }),
     EmailModule,
-    SmsModule,
   ],
   controllers: [UserController],
   providers: [
