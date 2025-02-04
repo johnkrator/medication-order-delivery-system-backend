@@ -16,7 +16,11 @@ async function bootstrap() {
       logger: new WinstonLogger(),
     });
 
-    app.enableCors();
+    app.enableCors({
+      origin: '*',
+      methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+      credentials: true,
+    });
     app.setGlobalPrefix('api');
     app.useGlobalPipes(new ValidationPipe());
     app.useGlobalFilters(new GlobalExceptionFilter());
