@@ -23,7 +23,17 @@ export class Order {
   user: User;
 
   @ManyToMany(() => Medication)
-  @JoinTable()
+  @JoinTable({
+    name: 'orders_medications',
+    joinColumn: {
+      name: 'orderId',
+      referencedColumnName: 'id',
+    },
+    inverseJoinColumn: {
+      name: 'medicationId',
+      referencedColumnName: 'id',
+    },
+  })
   medications: Medication[];
 
   @ManyToOne(() => DeliveryPartner, (partner) => partner.orders, {

@@ -82,6 +82,8 @@ export class PaymentService {
         status: PaymentStatus.PENDING,
         transactionReference: paymentReference,
         authorizationUrl: response.data.data.authorization_url,
+        createdAt: new Date(),
+        updatedAt: new Date(),
       });
       await this.paymentRepository.save(payment);
 

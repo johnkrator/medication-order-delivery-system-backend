@@ -58,6 +58,8 @@ export class OrderService {
       deliveryAddress,
       specialInstructions,
       status: OrderStatus.PENDING,
+      createdAt: new Date(),
+      updatedAt: new Date(),
     });
 
     // Save order

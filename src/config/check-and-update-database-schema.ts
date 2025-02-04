@@ -1,4 +1,10 @@
-import { DataSource, TableColumn, Table, TableIndex } from 'typeorm';
+import {
+  DataSource,
+  TableColumn,
+  Table,
+  TableIndex,
+  TableForeignKey,
+} from 'typeorm';
 import { User } from '../user/entities/user.entity';
 import { Order } from '../order/entities/order.entity';
 import { Medication } from '../medication/entities/medication.entity';
@@ -108,6 +114,65 @@ function formatDefaultValue(
   return undefined;
 }
 
+async function createJunctionTable(
+  queryRunner: any,
+  relation: any,
+  ownerTable: string,
+  inverseTable: string,
+) {
+  const junctionTableName = relation.junctionEntityMetadata?.tableName;
+
+  if (!junctionTableName) {
+    return;
+  }
+
+  const tableExists = await queryRunner.hasTable(junctionTableName);
+  if (tableExists) {
+    return;
+  }
+
+  console.log(`Creating junction table ${junctionTableName}...`);
+
+  // Create the junction table
+  const table = new Table({
+    name: junctionTableName,
+    columns: [
+      {
+        name: relation.junctionEntityMetadata.ownerColumns[0].propertyPath,
+        type: 'uuid',
+        isNullable: false,
+      },
+      {
+        name: relation.junctionEntityMetadata.inverseColumns[0].propertyPath,
+        type: 'uuid',
+        isNullable: false,
+      },
+    ],
+  });
+
+  await queryRunner.createTable(table, true);
+
+  // Add foreign keys
+  const ownerForeignKey = new TableForeignKey({
+    columnNames: [relation.junctionEntityMetadata.ownerColumns[0].propertyPath],
+    referencedColumnNames: ['id'],
+    referencedTableName: ownerTable,
+    onDelete: 'CASCADE',
+  });
+
+  const inverseForeignKey = new TableForeignKey({
+    columnNames: [
+      relation.junctionEntityMetadata.inverseColumns[0].propertyPath,
+    ],
+    referencedColumnNames: ['id'],
+    referencedTableName: inverseTable,
+    onDelete: 'CASCADE',
+  });
+
+  await queryRunner.createForeignKey(junctionTableName, ownerForeignKey);
+  await queryRunner.createForeignKey(junctionTableName, inverseForeignKey);
+}
+
 async function checkAndUpdateDatabaseSchema(dataSource: DataSource) {
   const queryRunner = dataSource.createQueryRunner();
 
@@ -130,15 +195,15 @@ async function checkAndUpdateDatabaseSchema(dataSource: DataSource) {
       }
     }
 
-    // Then create or update tables
+    // Create or update tables and handle relationships
     for (const entity of entities) {
-      const tableName = dataSource.getMetadata(entity).tableName;
+      const tableMetadata = dataSource.getMetadata(entity);
+      const tableName = tableMetadata.tableName;
       const tableExists = await queryRunner.hasTable(tableName);
 
       if (!tableExists) {
         console.log(`Creating table ${tableName}...`);
 
-        const tableMetadata = dataSource.getMetadata(entity);
         const table = new Table({
           name: tableMetadata.tableName,
           columns: tableMetadata.columns.map((column) => {
@@ -191,8 +256,6 @@ async function checkAndUpdateDatabaseSchema(dataSource: DataSource) {
             WHERE table_name = '${tableName}'
         `);
 
-        const tableMetadata = dataSource.getMetadata(entity);
-
         for (const columnMetadata of tableMetadata.columns) {
           const columnExists = columns.some(
             (c) => c.column_name === columnMetadata.databaseName,
@@ -224,6 +287,19 @@ async function checkAndUpdateDatabaseSchema(dataSource: DataSource) {
 
             await queryRunner.addColumn(tableName, columnDef);
           }
+        }
+      }
+
+      // Handle many-to-many relationships
+      for (const relation of tableMetadata.manyToManyRelations) {
+        if (relation.junctionEntityMetadata) {
+          const inverseEntityMetadata = relation.inverseEntityMetadata;
+          await createJunctionTable(
+            queryRunner,
+            relation,
+            tableName,
+            inverseEntityMetadata.tableName,
+          );
         }
       }
     }
