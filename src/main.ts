@@ -25,6 +25,36 @@ async function bootstrap() {
       optionsSuccessStatus: 204,
     });
 
+    app.use(
+      (
+        req: { method: string },
+        res: {
+          header: (arg0: string, arg1: string) => void;
+          status: (arg0: number) => {
+            (): any;
+            new (): any;
+            send: { (): void; new (): any };
+          };
+        },
+        next: () => void,
+      ) => {
+        if (req.method === 'OPTIONS') {
+          res.header('Access-Control-Allow-Origin', '*');
+          res.header(
+            'Access-Control-Allow-Methods',
+            'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
+          );
+          res.header(
+            'Access-Control-Allow-Headers',
+            'Content-Type, Accept, Authorization',
+          );
+          res.status(204).send();
+        } else {
+          next();
+        }
+      },
+    );
+
     app.setGlobalPrefix('api');
     app.useGlobalPipes(new ValidationPipe());
     app.useGlobalFilters(new GlobalExceptionFilter());
