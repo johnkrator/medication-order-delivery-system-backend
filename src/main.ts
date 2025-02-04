@@ -17,7 +17,7 @@ async function bootstrap() {
     });
 
     app.enableCors({
-      origin: '*',
+      origin: 'https://pharmatrade.vercel.app/',
       methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
       credentials: true,
     });
