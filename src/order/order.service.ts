@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
 import { Order } from './entities/order.entity';
@@ -9,6 +9,8 @@ import { Medication } from '../medication/entities/medication.entity';
 import { DeliveryPartner } from '../delivery-partner/entities/delivery-partner.entity';
 import { PaymentService } from '../payment/payment.service';
 import { OrderStatus } from '../enums/order-status';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import { Cache } from 'cache-manager';
 
 @Injectable()
 export class OrderService {
@@ -22,6 +24,7 @@ export class OrderService {
     @InjectRepository(DeliveryPartner)
     private readonly deliveryPartnerRepository: Repository<DeliveryPartner>,
     private readonly paymentService: PaymentService,
+    @Inject(CACHE_MANAGER) private cacheManager: Cache,
   ) {}
 
   async create(createOrderDto: CreateOrderDto): Promise<Order> {
@@ -78,19 +81,40 @@ export class OrderService {
   }
 
   async findAll(): Promise<Order[]> {
-    return this.orderRepository.find({
+    const cachedOrder = await this.cacheManager.get<Order[]>('allOrders');
+
+    if (cachedOrder) {
+      return cachedOrder;
+    }
+
+    const allOrders = await this.orderRepository.find({
       relations: ['user', 'medications', 'deliveryPartner'],
     });
+
+    await this.cacheManager.set('allOrders', allOrders);
+
+    return allOrders;
   }
 
   async findOne(id: string): Promise<Order> {
+    const cacheKey = `order_${id}`;
+    const cachedOrder = await this.cacheManager.get<Order>(cacheKey);
+
+    if (cachedOrder) {
+      return cachedOrder;
+    }
+
     const order = await this.orderRepository.findOne({
       where: { id },
       relations: ['user', 'medications', 'deliveryPartner'],
     });
+
     if (!order) {
       throw new NotFoundException('Order not found');
     }
+
+    await this.cacheManager.set(cacheKey, order, 3600);
+
     return order;
   }
 

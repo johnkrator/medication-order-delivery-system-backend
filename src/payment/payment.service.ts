@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  Inject,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -9,6 +10,7 @@ import axios from 'axios';
 import { Payment } from './entities/payment.entity';
 import { Order } from '../order/entities/order.entity';
 import { PaymentStatus } from '../enums/payment-status';
+import { Cache } from 'cache-manager';
 
 @Injectable()
 export class PaymentService {
@@ -17,6 +19,7 @@ export class PaymentService {
     private readonly paymentRepository: Repository<Payment>,
     @InjectRepository(Order)
     private readonly orderRepository: Repository<Order>,
+    @Inject('CACHE_MANAGER') private cacheManager: Cache,
   ) {}
 
   async initiatePayment(data: {
@@ -145,10 +148,29 @@ export class PaymentService {
   }
 
   async getAllPayments(): Promise<Payment[]> {
-    return this.paymentRepository.find({ relations: ['order'] });
+    const cacheKey = 'allPayments';
+    const cachedPayments = await this.cacheManager.get<Payment[]>(cacheKey);
+
+    if (cachedPayments) {
+      return cachedPayments;
+    }
+
+    const payments = await this.paymentRepository.find({
+      relations: ['order'],
+    });
+    await this.cacheManager.set(cacheKey, payments, 3600); // Cache for 1 hour
+
+    return payments;
   }
 
   async getPaymentById(id: string): Promise<Payment> {
+    const cacheKey = `payment_${id}`;
+    const cachedPayment = await this.cacheManager.get<Payment>(cacheKey);
+
+    if (cachedPayment) {
+      return cachedPayment;
+    }
+
     const payment = await this.paymentRepository.findOne({
       where: { id },
       relations: ['order'],
@@ -157,6 +179,8 @@ export class PaymentService {
     if (!payment) {
       throw new NotFoundException(`Payment with ID ${id} not found`);
     }
+
+    await this.cacheManager.set(cacheKey, payment, 3600); // Cache for 1 hour
 
     return payment;
   }

@@ -11,8 +11,8 @@ import {
 import { MedicationService } from './medication.service';
 import { CreateMedicationDto } from './dto/create-medication.dto';
 import { UpdateMedicationDto } from './dto/update-medication.dto';
-import { PaginationService } from '../services/pagination/pagination.service';
-import { PaginationOptions } from '../services/pagination/pagination-options';
+import { PaginationService } from '../common/pagination/pagination.service';
+import { PaginationOptions } from '../common/pagination/pagination-options';
 
 @Controller('medication')
 export class MedicationController {
