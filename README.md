@@ -80,7 +80,7 @@ authentication, medication inventory, order processing, payments, and delivery p
 1. Clone the repository:
 
 ```bash
-git clone https://github.com/johnkrator/medication-order-delivery-system-backend
+git clone https://github.com/johnkrator/medication-order-delivery-system-backend.git
 cd medication-order-delivery-system-backend
 ```
 
