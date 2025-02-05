@@ -8,11 +8,11 @@ import { UpdateMedicationDto } from './dto/update-medication.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Medication } from './entities/medication.entity';
 import { Repository } from 'typeorm';
-import { PaginationService } from '../services/pagination/pagination.service';
+import { PaginationService } from '../common/pagination/pagination.service';
 import {
   PaginatedResponse,
   PaginationOptions,
-} from '../services/pagination/pagination-options';
+} from '../common/pagination/pagination-options';
 
 @Injectable()
 export class MedicationService {

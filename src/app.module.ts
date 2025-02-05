@@ -12,8 +12,8 @@ import { MedicationModule } from './medication/medication.module';
 import { DeliveryPartnerModule } from './delivery-partner/delivery-partner.module';
 import typeormDbConfig from './config/typeorm.db.config';
 import { ThrottlerModule } from '@nestjs/throttler';
-import { PaginationService } from './services/pagination/pagination.service';
-import { PaginationModule } from './services/pagination/pagination.module';
+import { PaginationService } from './common/pagination/pagination.service';
+import { PaginationModule } from './common/pagination/pagination.module';
 
 @Module({
   imports: [
