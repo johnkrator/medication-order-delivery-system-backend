@@ -143,4 +143,21 @@ export class PaymentService {
       throw new Error(`Payment verification failed: ${error.message}`);
     }
   }
+
+  async getAllPayments(): Promise<Payment[]> {
+    return this.paymentRepository.find({ relations: ['order'] });
+  }
+
+  async getPaymentById(id: string): Promise<Payment> {
+    const payment = await this.paymentRepository.findOne({
+      where: { id },
+      relations: ['order'],
+    });
+
+    if (!payment) {
+      throw new NotFoundException(`Payment with ID ${id} not found`);
+    }
+
+    return payment;
+  }
 }
