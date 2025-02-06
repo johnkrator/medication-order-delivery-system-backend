@@ -16,9 +16,29 @@ export class OrderController {
   constructor(private readonly orderService: OrderService) {}
 
   @Post()
-  create(@Body() createOrderDto: CreateOrderDto) {
-    return this.orderService.create(createOrderDto);
+  async create(@Body() createOrderDto: CreateOrderDto) {
+    const result = await this.orderService.create(createOrderDto);
+    return {
+      status: 'pending',
+      totalAmount: result.order.totalAmount,
+      deliveryAddress: result.order.deliveryAddress,
+      specialInstructions: result.order.specialInstructions,
+      createdAt: result.order.createdAt,
+      updatedAt: result.order.updatedAt,
+      user: result.order.user,
+      medications: result.order.medications,
+      paymentReference: result.paymentReference,
+      id: result.order.id,
+      paymentStatus: result.order.paymentStatus,
+      redirectUrl: result.redirectUrl,
+      callbackUrl: result.callbackUrl,
+    };
   }
+
+  // @Post()
+  // create(@Body() createOrderDto: CreateOrderDto) {
+  //   return this.orderService.create(createOrderDto);
+  // }
 
   @Get()
   findAll() {

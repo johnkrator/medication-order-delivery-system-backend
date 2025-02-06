@@ -29,6 +29,7 @@ export class PaymentService {
   }): Promise<{
     paymentReference: string;
     redirectUrl: string;
+    callbackUrl: string; // Add callbackUrl to the response
   }> {
     const { orderId, amount, email } = data;
 
@@ -93,6 +94,7 @@ export class PaymentService {
       return {
         paymentReference,
         redirectUrl: response.data.data.authorization_url,
+        callbackUrl, // Include callbackUrl in the response
       };
     } catch (error) {
       console.error('Payment initialization failed:', error);
@@ -115,12 +117,17 @@ export class PaymentService {
         },
       );
 
-      if (!response.data.status || response.data.data.status !== 'success') {
+      console.log('Paystack API Response:', response.data); // Log the full response
+
+      if (!response.data.status) {
         throw new Error(
-          `Payment unsuccessful: ${response.data.data.gateway_response}`,
+          `Paystack API error: ${response.data.message}`,
         );
       }
 
+      const transactionStatus = response.data.data.status;
+
+      // Find the payment record
       const payment = await this.paymentRepository.findOne({
         where: { transactionReference },
         relations: ['order'],
@@ -132,13 +139,42 @@ export class PaymentService {
         );
       }
 
-      payment.status = PaymentStatus.SUCCESSFUL;
-      await this.paymentRepository.save(payment);
+      // Handle different transaction statuses
+      switch (transactionStatus) {
+        case 'success':
+          // Update payment and order status to SUCCESSFUL
+          payment.status = PaymentStatus.SUCCESSFUL;
+          if (payment.order) {
+            payment.order.paymentStatus = PaymentStatus.SUCCESSFUL;
+            await this.orderRepository.save(payment.order);
+          }
+          break;
 
-      if (payment.order) {
-        payment.order.paymentStatus = PaymentStatus.SUCCESSFUL;
-        await this.orderRepository.save(payment.order);
+        case 'abandoned':
+          // Update payment and order status to ABANDONED
+          payment.status = PaymentStatus.ABANDONED;
+          if (payment.order) {
+            payment.order.paymentStatus = PaymentStatus.ABANDONED;
+            await this.orderRepository.save(payment.order);
+          }
+          throw new Error('Payment abandoned: The transaction was not completed.');
+
+        case 'failed':
+          // Update payment and order status to FAILED
+          payment.status = PaymentStatus.FAILED;
+          if (payment.order) {
+            payment.order.paymentStatus = PaymentStatus.FAILED;
+            await this.orderRepository.save(payment.order);
+          }
+          throw new Error(`Payment failed: ${response.data.data.gateway_response}`);
+
+        default:
+          // Handle other statuses (e.g., pending, reversed, etc.)
+          throw new Error(`Payment status is ${transactionStatus}.`);
       }
+
+      // Save the updated payment status
+      await this.paymentRepository.save(payment);
 
       return payment;
     } catch (error) {

@@ -5,13 +5,12 @@ import {
   Query,
   Get,
   Param,
-  UseGuards,
+  BadRequestException,
+  InternalServerErrorException,
 } from '@nestjs/common';
 import { PaymentService } from './payment.service';
-import { CreatePaymentDto, VerifyPaymentDto } from './dto/create-payment.dto';
+import { CreatePaymentDto } from './dto/create-payment.dto';
 import { Payment } from './entities/payment.entity';
-import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
-import { AdminGuard } from '../common/guards/admin.guard';
 
 @Controller('payment')
 export class PaymentController {
@@ -22,14 +21,34 @@ export class PaymentController {
     return this.paymentService.initiatePayment(createPaymentDto);
   }
 
-  @Post('verify')
-  verifyPayment(@Query() verifyPaymentDto: VerifyPaymentDto) {
-    return this.paymentService.verifyPayment(verifyPaymentDto.transactionId);
+  @Get('verify')
+  async verifyPayment(@Query('transactionReference') transactionReference: string) {
+    try {
+      return await this.paymentService.verifyPayment(transactionReference);
+    } catch (error) {
+      if (error.message.includes('Payment abandoned')) {
+        throw new BadRequestException(error.message);
+      } else if (error.message.includes('Payment failed')) {
+        throw new BadRequestException(error.message);
+      } else {
+        throw new InternalServerErrorException(error.message);
+      }
+    }
   }
 
-  @Post('payment/callback')
-  async handlePaymentCallback(@Query('transaction_id') transactionId: string) {
-    return this.paymentService.verifyPayment(transactionId);
+  @Post('callback')
+  async handlePaymentCallback(@Query('transactionReference') transactionReference: string) {
+    try {
+      return await this.paymentService.verifyPayment(transactionReference);
+    } catch (error) {
+      if (error.message.includes('Payment abandoned')) {
+        throw new BadRequestException(error.message);
+      } else if (error.message.includes('Payment failed')) {
+        throw new BadRequestException(error.message);
+      } else {
+        throw new InternalServerErrorException(error.message);
+      }
+    }
   }
 
   @Get()
