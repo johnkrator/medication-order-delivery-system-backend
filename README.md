@@ -220,6 +220,7 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 3. Deployed API Link: https://pharmatradeapi.vercel.app/api
 4. Deployed API Doc
    Link: https://documenter.getpostman.com/view/18462993/2sAYX6p1xN#8ddbe654-8b2e-4f15-a845-c88b7fc62e44
+5. DB Design Link: https://dbdiagram.io/d/67a4545e263d6cf9a0367a22
 
 ## 🙏 Acknowledgments
 
