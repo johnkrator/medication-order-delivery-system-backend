@@ -13,9 +13,3 @@ export class CreatePaymentDto {
   @IsNotEmpty()
   email: string;
 }
-
-export class VerifyPaymentDto {
-  @IsString()
-  @IsNotEmpty()
-  transactionId: string;
-}

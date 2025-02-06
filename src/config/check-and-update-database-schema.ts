@@ -1,158 +1,81 @@
-import {
-  DataSource,
-  TableColumn,
-  Table,
-  TableIndex,
-  TableForeignKey,
-} from 'typeorm';
-import { User } from '../user/entities/user.entity';
-import { Order } from '../order/entities/order.entity';
-import { Medication } from '../medication/entities/medication.entity';
-import { DeliveryPartner } from '../delivery-partner/entities/delivery-partner.entity';
-import { Payment } from '../payment/entities/payment.entity';
+import { DataSource, Table, TableColumn, TableForeignKey, TableIndex } from 'typeorm';
 
-async function createEnumType(
-  queryRunner: any,
-  enumName: string,
-  enumValues: (string | number)[],
-) {
+async function createEnumType(queryRunner: any, enumName: string, enumValues: (string | number)[]) {
   const enumExists = await queryRunner.query(`
-      SELECT EXISTS (SELECT 1
-                     FROM pg_type
-                     WHERE typname = '${enumName}');
+    SELECT EXISTS (SELECT 1 FROM pg_type WHERE typname = '${enumName}');
   `);
 
   if (!enumExists[0].exists) {
     console.log(`Creating enum type ${enumName}`);
     const formattedValues = enumValues
-      .map((value) =>
-        typeof value === 'string'
-          ? `'${value.replace(/'/g, "''")}'`
-          : `'${value}'`,
-      )
+      .map((value) => (typeof value === 'string' ? `'${value.replace(/'/g, "''")}'` : `'${value}'`))
       .join(', ');
-
-    await queryRunner.query(`
-      CREATE TYPE ${enumName} AS ENUM (${formattedValues});
-    `);
+    await queryRunner.query(`CREATE TYPE ${enumName} AS ENUM (${formattedValues});`);
   }
 }
 
 function getPostgresType(columnMetadata: any): string {
   if (columnMetadata.enum) {
-    const enumName =
-      `${columnMetadata.entityMetadata.tableName}_${columnMetadata.databaseName}_enum`.toLowerCase();
+    const enumName = `${columnMetadata.entityMetadata.tableName}_${columnMetadata.databaseName}_enum`.toLowerCase();
     return columnMetadata.isArray ? `${enumName}[]` : enumName;
   }
 
-  if (typeof columnMetadata.type === 'string') {
-    switch (columnMetadata.type.toLowerCase()) {
-      case 'uuid':
-        return 'uuid';
-      case 'string':
-      case 'text':
-        return 'text';
-      case 'number':
-      case 'int':
-        return 'integer';
-      case 'decimal':
-        return 'decimal';
-      case 'boolean':
-        return 'boolean';
-      case 'date':
-        return 'timestamp';
-      default:
-        return columnMetadata.type.toLowerCase();
-    }
-  }
+  const typeMap: Record<string, string> = {
+    uuid: 'uuid',
+    string: 'text',
+    text: 'text',
+    number: 'integer',
+    int: 'integer',
+    decimal: 'decimal',
+    boolean: 'boolean',
+    date: 'timestamp',
+  };
 
-  const typeStr = columnMetadata.type.toString().toLowerCase();
-  if (typeStr.includes('string')) return 'text';
-  if (typeStr.includes('number')) return 'integer';
-  if (typeStr.includes('boolean')) return 'boolean';
-  if (typeStr.includes('date')) return 'timestamp';
+  // Ensure type is a string before calling toLowerCase
+  const type = typeof columnMetadata.type === 'string' ? columnMetadata.type.toLowerCase() : '';
 
-  return 'text';
+  return typeMap[type] || 'text';
 }
 
-function formatDefaultValue(
-  value: any,
-  type: string,
-  columnMetadata: any,
-): string | undefined {
+function formatDefaultValue(value: any, type: string, columnMetadata: any): string | undefined {
   if (value === undefined) return undefined;
 
   if (typeof value === 'function') {
     const fnStr = value.toString().toLowerCase();
-    if (fnStr.includes('current_timestamp') || fnStr.includes('now')) {
-      return 'CURRENT_TIMESTAMP';
-    }
+    if (fnStr.includes('current_timestamp') || fnStr.includes('now')) return 'CURRENT_TIMESTAMP';
     return undefined;
   }
 
-  // Special handling for array defaults
-  if (
-    Array.isArray(value) ||
-    (typeof value === 'string' && columnMetadata.isArray)
-  ) {
-    // If it's a single string value for an array column, wrap it in an array
+  if (Array.isArray(value) || (typeof value === 'string' && columnMetadata.isArray)) {
     const arrayValues = Array.isArray(value) ? value : [value];
-
-    // For enum arrays, we need to cast the array to the correct type
     if (type.endsWith('[]')) {
-      const enumTypeName = type.slice(0, -2); // Remove the '[]' suffix
+      type.slice(0, -2);
       return `ARRAY[${arrayValues.map((v) => `'${v}'`).join(',')}]::${type}`;
     }
-
     return `ARRAY[${arrayValues.map((v) => `'${v}'`).join(',')}]`;
   }
 
-  if (typeof value === 'boolean') return value.toString();
-  if (typeof value === 'number') return value.toString();
+  if (typeof value === 'boolean' || typeof value === 'number') return value.toString();
   if (typeof value === 'string') return `'${value.replace(/'/g, "''")}'`;
 
   return undefined;
 }
 
-async function createJunctionTable(
-  queryRunner: any,
-  relation: any,
-  ownerTable: string,
-  inverseTable: string,
-) {
+async function createJunctionTable(queryRunner: any, relation: any, ownerTable: string, inverseTable: string) {
   const junctionTableName = relation.junctionEntityMetadata?.tableName;
-
-  if (!junctionTableName) {
-    return;
-  }
-
-  const tableExists = await queryRunner.hasTable(junctionTableName);
-  if (tableExists) {
-    return;
-  }
+  if (!junctionTableName || await queryRunner.hasTable(junctionTableName)) return;
 
   console.log(`Creating junction table ${junctionTableName}...`);
-
-  // Create the junction table
   const table = new Table({
     name: junctionTableName,
     columns: [
-      {
-        name: relation.junctionEntityMetadata.ownerColumns[0].propertyPath,
-        type: 'uuid',
-        isNullable: false,
-      },
-      {
-        name: relation.junctionEntityMetadata.inverseColumns[0].propertyPath,
-        type: 'uuid',
-        isNullable: false,
-      },
+      { name: relation.junctionEntityMetadata.ownerColumns[0].propertyPath, type: 'uuid', isNullable: false },
+      { name: relation.junctionEntityMetadata.inverseColumns[0].propertyPath, type: 'uuid', isNullable: false },
     ],
   });
 
   await queryRunner.createTable(table, true);
 
-  // Add foreign keys
   const ownerForeignKey = new TableForeignKey({
     columnNames: [relation.junctionEntityMetadata.ownerColumns[0].propertyPath],
     referencedColumnNames: ['id'],
@@ -161,9 +84,7 @@ async function createJunctionTable(
   });
 
   const inverseForeignKey = new TableForeignKey({
-    columnNames: [
-      relation.junctionEntityMetadata.inverseColumns[0].propertyPath,
-    ],
+    columnNames: [relation.junctionEntityMetadata.inverseColumns[0].propertyPath],
     referencedColumnNames: ['id'],
     referencedTableName: inverseTable,
     onDelete: 'CASCADE',
@@ -180,16 +101,13 @@ async function checkAndUpdateDatabaseSchema(dataSource: DataSource) {
     await queryRunner.connect();
     await queryRunner.startTransaction();
 
-    const entities = [User, Order, Medication, DeliveryPartner, Payment];
+    const entities = dataSource.entityMetadatas;
 
     // Create enum types first
     for (const entity of entities) {
-      const tableMetadata = dataSource.getMetadata(entity);
-
-      for (const column of tableMetadata.columns) {
+      for (const column of entity.columns) {
         if (column.enum) {
-          const enumName =
-            `${tableMetadata.tableName}_${column.databaseName}_enum`.toLowerCase();
+          const enumName = `${entity.tableName}_${column.databaseName}_enum`.toLowerCase();
           await createEnumType(queryRunner, enumName, column.enum);
         }
       }
@@ -197,18 +115,16 @@ async function checkAndUpdateDatabaseSchema(dataSource: DataSource) {
 
     // Create or update tables and handle relationships
     for (const entity of entities) {
-      const tableMetadata = dataSource.getMetadata(entity);
-      const tableName = tableMetadata.tableName;
+      const tableName = entity.tableName;
       const tableExists = await queryRunner.hasTable(tableName);
 
       if (!tableExists) {
         console.log(`Creating table ${tableName}...`);
-
         const table = new Table({
-          name: tableMetadata.tableName,
-          columns: tableMetadata.columns.map((column) => {
+          name: tableName,
+          columns: entity.columns.map((column) => {
             const postgresType = getPostgresType(column);
-            const columnDef: TableColumn = new TableColumn({
+            const columnDef = new TableColumn({
               name: column.databaseName,
               type: postgresType,
               isNullable: column.isNullable,
@@ -217,14 +133,8 @@ async function checkAndUpdateDatabaseSchema(dataSource: DataSource) {
               generationStrategy: column.generationStrategy,
             });
 
-            const defaultValue = formatDefaultValue(
-              column.default,
-              postgresType,
-              column,
-            );
-            if (defaultValue !== undefined) {
-              columnDef.default = defaultValue;
-            }
+            const defaultValue = formatDefaultValue(column.default, postgresType, column);
+            if (defaultValue !== undefined) columnDef.default = defaultValue;
 
             return columnDef;
           }),
@@ -233,57 +143,37 @@ async function checkAndUpdateDatabaseSchema(dataSource: DataSource) {
         await queryRunner.createTable(table, true);
 
         // Create indices
-        const indices = tableMetadata.indices;
-        for (const indexMetadata of indices) {
+        for (const index of entity.indices) {
           const tableIndex = new TableIndex({
-            name: indexMetadata.name,
-            columnNames: indexMetadata.columns.map((col) =>
-              typeof col === 'string' ? col : col.databaseName,
-            ),
-            isUnique: indexMetadata.isUnique,
-            where: indexMetadata.where,
+            name: index.name,
+            columnNames: index.columns.map((col) => (typeof col === 'string' ? col : col.databaseName)),
+            isUnique: index.isUnique,
+            where: index.where,
           });
-
           await queryRunner.createIndex(tableName, tableIndex);
         }
       } else {
         console.log(`Checking columns for table ${tableName}...`);
-
-        // Check and add missing columns
         const columns = await queryRunner.query(`
-            SELECT column_name, data_type, udt_name
-            FROM information_schema.columns
-            WHERE table_name = '${tableName}'
+          SELECT column_name FROM information_schema.columns WHERE table_name = '${tableName}';
         `);
 
-        for (const columnMetadata of tableMetadata.columns) {
-          const columnExists = columns.some(
-            (c) => c.column_name === columnMetadata.databaseName,
-          );
-
+        for (const column of entity.columns) {
+          const columnExists = columns.some((c: any) => c.column_name === column.databaseName);
           if (!columnExists) {
-            console.log(
-              `Adding column ${columnMetadata.databaseName} to table ${tableName}...`,
-            );
-
-            const postgresType = getPostgresType(columnMetadata);
+            console.log(`Adding column ${column.databaseName} to table ${tableName}...`);
+            const postgresType = getPostgresType(column);
             const columnDef = new TableColumn({
-              name: columnMetadata.databaseName,
+              name: column.databaseName,
               type: postgresType,
-              isNullable: columnMetadata.isNullable,
-              isPrimary: columnMetadata.isPrimary,
-              isGenerated: columnMetadata.isGenerated,
-              generationStrategy: columnMetadata.generationStrategy,
+              isNullable: column.isNullable,
+              isPrimary: column.isPrimary,
+              isGenerated: column.isGenerated,
+              generationStrategy: column.generationStrategy,
             });
 
-            const defaultValue = formatDefaultValue(
-              columnMetadata.default,
-              postgresType,
-              columnMetadata,
-            );
-            if (defaultValue !== undefined) {
-              columnDef.default = defaultValue;
-            }
+            const defaultValue = formatDefaultValue(column.default, postgresType, column);
+            if (defaultValue !== undefined) columnDef.default = defaultValue;
 
             await queryRunner.addColumn(tableName, columnDef);
           }
@@ -291,15 +181,9 @@ async function checkAndUpdateDatabaseSchema(dataSource: DataSource) {
       }
 
       // Handle many-to-many relationships
-      for (const relation of tableMetadata.manyToManyRelations) {
+      for (const relation of entity.manyToManyRelations) {
         if (relation.junctionEntityMetadata) {
-          const inverseEntityMetadata = relation.inverseEntityMetadata;
-          await createJunctionTable(
-            queryRunner,
-            relation,
-            tableName,
-            inverseEntityMetadata.tableName,
-          );
+          await createJunctionTable(queryRunner, relation, tableName, relation.inverseEntityMetadata.tableName);
         }
       }
     }

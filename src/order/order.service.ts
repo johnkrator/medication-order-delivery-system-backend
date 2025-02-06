@@ -27,7 +27,12 @@ export class OrderService {
     @Inject(CACHE_MANAGER) private cacheManager: Cache,
   ) {}
 
-  async create(createOrderDto: CreateOrderDto): Promise<Order> {
+  async create(createOrderDto: CreateOrderDto): Promise<{
+    order: Order;
+    paymentReference: string;
+    redirectUrl: string;
+    callbackUrl: string;
+  }> {
     const { userId, medicationIds, deliveryAddress, specialInstructions } =
       createOrderDto;
 
@@ -77,7 +82,14 @@ export class OrderService {
 
     // Update order with payment reference
     savedOrder.paymentReference = payment.paymentReference;
-    return this.orderRepository.save(savedOrder);
+    await this.orderRepository.save(savedOrder);
+
+    return {
+      order: savedOrder,
+      paymentReference: payment.paymentReference,
+      redirectUrl: payment.redirectUrl,
+      callbackUrl: payment.callbackUrl,
+    };
   }
 
   async findAll(): Promise<Order[]> {
